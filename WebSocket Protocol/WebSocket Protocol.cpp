@@ -5,7 +5,6 @@
 #include <vector>
 #include <mutex>
 #include <queue>
-#include <chrono>
 
 namespace beast = boost::beast;
 namespace asio = boost::asio;
@@ -54,7 +53,7 @@ public:
             stop = true;
         }
         condition.notify_all();
-        for (auto& worker : workers) worker.join();
+        for (auto& worker : workers) worker.detach();
     }
 
     bool isFull() const
@@ -154,14 +153,11 @@ void do_listen(asio::io_context& io_context, unsigned short port)
 
             if (pool.isFull())
             {
-                /*
                 beast::websocket::stream<tcp::socket> ws(std::move(socket));
                 ws.accept();
                 ws.text(ws.got_text());
                 ws.write(asio::buffer("Server is busy. Please try again later."));
                 ws.close(beast::websocket::close_code::normal);
-                */
-                cout << "All sockets disconnected. Waiting for connection..." << endl;
             }
             else
             {
