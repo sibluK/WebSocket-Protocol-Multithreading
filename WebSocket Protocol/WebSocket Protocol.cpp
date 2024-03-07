@@ -24,7 +24,9 @@ public:
                     function<void()> task;
                     {
                         unique_lock<mutex> lock(queue_mutex);
-                        condition.wait(lock, [this] { return stop || !tasks.empty(); });
+                        condition.wait(lock, [this] {
+                            return stop || !tasks.empty();
+                            });
                         if (stop && tasks.empty()) return;
                         task = move(tasks.front());
                         tasks.pop();
@@ -62,7 +64,7 @@ public:
 
     bool isEmpty()
     {
-        return tasks.size() == 0;
+        return tasks.empty();
     }
 
 private:
@@ -73,7 +75,7 @@ private:
     bool stop;
 };
 
-void do_session(tcp::socket socket);
+void do_session(tcp::socket socket, thread::id thread_id);
 void do_listen(asio::io_context& io_context, unsigned short port);
 void send_message(beast::websocket::stream<tcp::socket>& ws);
 
@@ -94,11 +96,10 @@ int main()
     return 0;
 }
 
-void do_session(tcp::socket socket)
+void do_session(tcp::socket socket, thread::id thread_id)
 {
     try
     {
-        thread::id thread_id = this_thread::get_id();
         cout << "New thread created for connection: " << thread_id << endl;
 
         beast::websocket::stream<tcp::socket> ws(move(socket));
@@ -117,8 +118,16 @@ void do_session(tcp::socket socket)
             cout << "Thread ID: " << thread_id << endl;
             cout << endl;
 
-            send_message(ws);
+            //send_message(ws);
+
+            if (message == "quit") {
+                cout << "Received 'quit' message. Terminating connection." << endl;
+                break;
+            }
         }
+
+        cout << "Thread " << thread_id << " released" << endl;
+        cout << endl;
     }
     catch (beast::system_error const& se)
     {
@@ -133,9 +142,10 @@ void do_listen(asio::io_context& io_context, unsigned short port)
 {
     try
     {
-        ThreadPool pool(4);
+        ThreadPool pool(2);
 
         tcp::acceptor acceptor(io_context, { tcp::v4(), port});
+        bool allSocketDisconnected = true;
 
         while (true)
         {
@@ -144,23 +154,35 @@ void do_listen(asio::io_context& io_context, unsigned short port)
 
             if (pool.isFull())
             {
+                /*
                 beast::websocket::stream<tcp::socket> ws(std::move(socket));
                 ws.accept();
                 ws.text(ws.got_text());
                 ws.write(asio::buffer("Server is busy. Please try again later."));
                 ws.close(beast::websocket::close_code::normal);
-            }
-
-            auto shared_socket = make_shared<tcp::socket>(std::move(socket));
-            pool.enqueue([shared_socket]() {
-                do_session(move(*shared_socket));
-            });
-
-            if (pool.isEmpty()) {
+                */
                 cout << "All sockets disconnected. Waiting for connection..." << endl;
             }
+            else
+            {
+                auto shared_socket = make_shared<tcp::socket>(std::move(socket));
+                pool.enqueue([shared_socket]() {
+                    auto thread_id = this_thread::get_id();
+                    do_session(move(*shared_socket), thread_id);
+                    });
 
+                if (!pool.isEmpty())
+                {
+                    allSocketDisconnected = false;
+                }
+            }
         }
+
+        if (allSocketDisconnected)
+        {
+            cout << "All sockets disconnected. Waiting for connection..." << endl;
+        }
+
     }
     catch (beast::system_error const& se)
     {
