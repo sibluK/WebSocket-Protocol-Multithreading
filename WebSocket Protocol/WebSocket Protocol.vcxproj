@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\pugli\OneDrive\Stalinis kompiuteris\Multithreaded programming\boost_1_84_0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Nedas\source\repos\boost_1_84_0</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
